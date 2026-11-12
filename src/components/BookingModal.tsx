@@ -23,7 +23,6 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
     nomerHp: "",
   });
 
-  // State untuk tanggal lahir menggunakan objek Date / null
   const [birthDate, setBirthDate] = useState<Date | null>(null);
 
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
@@ -34,7 +33,6 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
 
   const nextDeparture = pkg.departures?.[0];
 
-  // Security Input: Sanitasi untuk mencegah XSS & Script Injection
   const sanitizeInput = (value: string) => {
     return value
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
@@ -46,7 +44,6 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
     setFormData({ ...formData, [name]: sanitizeInput(value) });
   };
 
-  // Kompresi gambar bukti transfer ke format JPEG client-side
   const handleImageCompression = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -150,7 +147,7 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
           
           {step === "form" ? (
             <>
-              {/* TAHAP 1: FORMULIR DENGAN REACT-DATEPICKER */}
+              {/* TAHAP 1: FORMULIR */}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -242,7 +239,6 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                   </div>
                 </div>
 
-                {/* Integrasi React Datepicker */}
                 <div>
                   <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
                     Tanggal Lahir *
@@ -279,8 +275,8 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                 </div>
               </form>
 
-              {/* Sidebar Kanan */}
-              <div className="lg:col-span-5 bg-gray-50 dark:bg-gray-800/50 p-5 sm:p-6 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-800 hidden sm:flex flex-col justify-between space-y-3">
+              {/* Sidebar Kanan (Kini Ditampilkan di Semua Ukuran Layar secara Responsive) */}
+              <div className="lg:col-span-5 bg-gray-50 dark:bg-gray-800/50 p-5 sm:p-6 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-800 flex flex-col justify-between space-y-3">
                 <div className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-1.5">
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                     Ringkasan Paket
