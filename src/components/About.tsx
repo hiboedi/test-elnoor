@@ -15,13 +15,15 @@ export default function About() {
                 height={100}
                 className="h -ud-left-5 x"
               />
+              {/* Gambar 1: Ka'bah & Masjidil Haram Makkah */}
               <Image
-                src="https://images.unsplash.com/photo-1565552645632-d725f8bfc19a?q=80&w=800&auto=format&fit=crop"
+                src="https://images.unsplash.com/photo-1580418827493-f2b22c0a76cb?q=80&w=800&auto=format&fit=crop"
                 alt="Suasana Ibadah di Masjidil Haram Makkah"
                 width={300}
                 height={320}
                 className="ib rounded-2xl shadow-lg object-cover aspect-[3/3.2]"
               />
+              {/* Gambar 2: Payung & Kubah Hijau Masjid Nabawi Madinah */}
               <Image
                 src="https://images.unsplash.com/photo-1591604129939-f1efa4d9f7fa?q=80&w=800&auto=format&fit=crop"
                 alt="Masjid Nabawi Madinah"
@@ -37,8 +39,9 @@ export default function About() {
                 width={100}
                 height={100}
               />
+              {/* Gambar 3: Jemaah Tawaf / Ibadah di Tanah Suci */}
               <Image
-                src="https://images.unsplash.com/photo-1542816417-0983c9c9ad53?q=80&w=800&auto=format&fit=crop"
+                src="https://images.unsplash.com/photo-1564769625905-50e93615e769?q=80&w=800&auto=format&fit=crop"
                 alt="Jemaah Haji & Umrah PT El Noor Mutsa Maria"
                 width={300}
                 height={340}

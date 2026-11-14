@@ -9,17 +9,66 @@ import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
 
-// Impor data mockup dan fungsi helper dari file terpisah
-import {
-  mockPackagesData,
-  PackageItem,
-  formatRupiah,
-  formatDepartureDate,
-} from "@/src/data/mockPackages";
 import BookingModal from "@/src/components/BookingModal";
 
+export interface DepartureItem {
+  id: string;
+  packageId: string;
+  departureDate: string;
+  returnDate: string;
+  durationDays: number;
+  priceQuad: number;
+  priceTriple: number;
+  priceDouble: number;
+  quotaTotal: number;
+  quotaAvailable: number;
+  status: string;
+  // Alias opsional jika BookingModal masih membaca nama field lama
+  availableSeats?: number;
+  totalSeats?: number;
+}
+
+export interface PackageItem {
+  id: string;
+  title: string;
+  slug: string;
+  category: string;
+  description: string;
+  hotelMakkah: string;
+  hotelMadinah: string;
+  airline: string;
+  imageUrl: string | null;
+  includes: string[];
+  excludes: string[];
+  isActive: boolean;
+  departures: DepartureItem[];
+}
+
+function formatRupiah(amount?: number | null) {
+  const numericAmount = Number(amount);
+  if (!numericAmount || numericAmount <= 0) {
+    return "-";
+  }
+
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numericAmount);
+}
+
+function formatDepartureDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function Pricing() {
-  const [packages, setPackages] = useState<PackageItem[]>(mockPackagesData);
+  const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [mounted, setMounted] = useState(false);
   const [selectedPackage, setSelectedPackage] = useState<PackageItem | null>(null);
@@ -27,13 +76,51 @@ export default function Pricing() {
 
   useEffect(() => {
     setMounted(true);
+
+    async function fetchPackages() {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_DATA || "http://localhost:3000/api";
+        const res = await fetch(`${baseUrl}/packages`, {
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const json = await res.json();
+
+        if (json.success && Array.isArray(json.data)) {
+          const normalizedData: PackageItem[] = json.data.map((pkg: any) => ({
+            ...pkg,
+            departures: (pkg.departures || []).map((dep: any) => ({
+              ...dep,
+              availableSeats: dep.quotaAvailable,
+              totalSeats: dep.quotaTotal,
+            })),
+          }));
+
+          setPackages(normalizedData);
+        }
+      } catch (error) {
+        console.error("Gagal memuat data paket dari API:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPackages();
   }, []);
 
   const filteredPackages = packages.filter((pkg) => {
     if (!pkg.isActive) return false;
     if (selectedCategory === "ALL") return true;
     if (selectedCategory === "HAJI") {
-      return pkg.category === "HAJI_KHUSUS" || pkg.category === "HAJI_FURODA";
+      return (
+        pkg.category === "HAJI_PLUS" ||
+        pkg.category === "HAJI_KHUSUS" ||
+        pkg.category === "HAJI_FURODA"
+      );
     }
     return pkg.category === selectedCategory;
   });
@@ -44,7 +131,10 @@ export default function Pricing() {
   };
 
   return (
-    <section id="packages" className="scroll-mt-24 py-16 px-4 overflow-hidden bg-gray-50/50 dark:bg-gray-950/50">
+    <section
+      id="packages"
+      className="scroll-mt-24 py-16 px-4 overflow-hidden bg-slate-50/70 dark:bg-gray-950/50"
+    >
       {/* Section Title */}
       <div className="max-w-4xl mx-auto text-center mb-12 relative z-10">
         <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 dark:text-white mb-4">
@@ -62,10 +152,11 @@ export default function Pricing() {
         <div className="flex flex-wrap justify-center gap-2 mb-6">
           {[
             { id: "ALL", label: "Semua Paket" },
+            { id: "UMRAH_PROMO", label: "Umrah Promo" },
             { id: "UMRAH_REGULER", label: "Umrah Reguler" },
-            { id: "UMRAH_VIP", label: "Umrah VVIP" },
+            { id: "UMRAH_VIP", label: "Umrah VIP" },
             { id: "UMRAH_PLUS", label: "Umrah Plus" },
-            { id: "HAJI", label: "Haji Khusus & Furoda" },
+            { id: "HAJI", label: "Haji Plus & Furoda" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -107,9 +198,23 @@ export default function Pricing() {
 
       {/* Package Cards Slider */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-        {mounted && (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-7 py-6">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className="h-[520px] rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 animate-pulse p-6 space-y-4"
+              >
+                <div className="h-48 bg-gray-200 dark:bg-gray-800 rounded-2xl" />
+                <div className="h-6 w-2/3 bg-gray-200 dark:bg-gray-800 rounded-lg" />
+                <div className="h-4 w-full bg-gray-200 dark:bg-gray-800 rounded-lg" />
+                <div className="h-32 w-full bg-gray-100 dark:bg-gray-800/60 rounded-2xl mt-6" />
+              </div>
+            ))}
+          </div>
+        ) : mounted && filteredPackages.length > 0 ? (
           <Swiper
-            key={selectedCategory}
+            key={`${selectedCategory}-${filteredPackages.length}`}
             modules={[Navigation, Pagination]}
             spaceBetween={24}
             slidesPerView={1}
@@ -127,35 +232,47 @@ export default function Pricing() {
               768: { slidesPerView: 2, spaceBetween: 24 },
               1024: { slidesPerView: 3, spaceBetween: 28 },
             }}
-            className="!pb-12"
+            className="!px-2 !pt-2 !pb-14"
           >
             {filteredPackages.map((pkg) => {
               const nextDeparture = pkg.departures?.[0];
 
               return (
                 <SwiperSlide key={pkg.id} className="!h-auto flex">
-                  <div className="w-full bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col justify-between">
-                    
+                  <div
+                    style={{
+                      boxShadow:
+                        "0 20px 40px -12px rgba(15, 23, 42, 0.16), 0 4px 16px -4px rgba(15, 23, 42, 0.08)",
+                    }}
+                    className="w-full bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-slate-200/80 dark:border-gray-800 transition-all duration-300 flex flex-col justify-between"
+                  >
                     {/* Bagian Atas Kartu */}
                     <div>
                       {/* Cover Image */}
                       <div className="relative w-full h-52 bg-gray-100 dark:bg-gray-800 overflow-hidden">
-                        <Image
-                          src={
-                            pkg.imageUrl ||
-                            "https://images.unsplash.com/photo-1565552645632-d725f8bfc19a?q=80&w=1000&auto=format&fit=crop"
-                          }
-                          alt={pkg.title}
-                          fill
-                          className="object-cover transition-transform duration-500 hover:scale-105"
-                        />
+                        {pkg.imageUrl ? (
+                          <Image
+                            src={pkg.imageUrl}
+                            alt={pkg.title}
+                            fill
+                            unoptimized={Boolean(
+                              pkg.imageUrl.includes("localhost") ||
+                              pkg.imageUrl.startsWith("data:")
+                            )}
+                            className="object-cover transition-transform duration-500 hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                            Tidak ada gambar
+                          </div>
+                        )}
                       </div>
 
                       {/* Card Body */}
                       <div className="p-6">
                         <div className="mb-3">
                           <span className="inline-block px-3.5 py-1 rounded-full text-xs font-bold tracking-wide uppercase bg-[#1BC033]/15 text-[#16a32b] dark:text-[#1BC033]">
-                            {pkg.category}
+                            {pkg.category.replace(/_/g, " ")}
                           </span>
                         </div>
 
@@ -208,7 +325,7 @@ export default function Pricing() {
                               Include:
                             </div>
                             <ul className="space-y-1 text-gray-600 dark:text-gray-400 list-disc list-inside">
-                              {pkg.includes.map((inc, idx) => (
+                              {(pkg.includes || []).map((inc, idx) => (
                                 <li key={idx} className="truncate" title={inc}>
                                   {inc}
                                 </li>
@@ -221,7 +338,7 @@ export default function Pricing() {
                               Exclude:
                             </div>
                             <ul className="space-y-1 text-gray-600 dark:text-gray-400 list-disc list-inside">
-                              {pkg.excludes.map((exc, idx) => (
+                              {(pkg.excludes || []).map((exc, idx) => (
                                 <li key={idx} className="truncate" title={exc}>
                                   {exc}
                                 </li>
@@ -241,19 +358,37 @@ export default function Pricing() {
                           <div className="space-y-2 text-sm">
                             <div className="flex items-center justify-between">
                               <span className="text-gray-600 dark:text-gray-400">Quad (4 Org):</span>
-                              <span className="font-bold text-[#16a32b] dark:text-[#1BC033]">
+                              <span
+                                className={
+                                  Number(nextDeparture.priceQuad) > 0
+                                    ? "font-bold text-[#16a32b] dark:text-[#1BC033]"
+                                    : "font-semibold text-gray-400 dark:text-gray-500"
+                                }
+                              >
                                 {formatRupiah(nextDeparture.priceQuad)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-gray-600 dark:text-gray-400">Triple (3 Org):</span>
-                              <span className="font-bold text-gray-900 dark:text-white">
+                              <span
+                                className={
+                                  Number(nextDeparture.priceTriple) > 0
+                                    ? "font-bold text-gray-900 dark:text-white"
+                                    : "font-semibold text-gray-400 dark:text-gray-500"
+                                }
+                              >
                                 {formatRupiah(nextDeparture.priceTriple)}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-gray-600 dark:text-gray-400">Double (2 Org):</span>
-                              <span className="font-bold text-gray-900 dark:text-white">
+                              <span
+                                className={
+                                  Number(nextDeparture.priceDouble) > 0
+                                    ? "font-bold text-gray-900 dark:text-white"
+                                    : "font-semibold text-gray-400 dark:text-gray-500"
+                                }
+                              >
                                 {formatRupiah(nextDeparture.priceDouble)}
                               </span>
                             </div>
@@ -262,7 +397,7 @@ export default function Pricing() {
                           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs">
                             <span className="text-gray-500 dark:text-gray-400">Sisa Kuota:</span>
                             <span className="px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-800 font-bold text-gray-800 dark:text-gray-200">
-                              {nextDeparture.availableSeats} / {nextDeparture.totalSeats} Seat
+                              {nextDeparture.quotaAvailable} / {nextDeparture.quotaTotal} Seat
                             </span>
                           </div>
                         </>
@@ -282,23 +417,28 @@ export default function Pricing() {
                         <span style={{ color: "#ffffff" }} className="text-white font-semibold text-sm">
                           Pesan Paket Ini
                         </span>
-                        <svg 
-                          className="w-4 h-4 text-white" 
+                        <svg
+                          className="w-4 h-4 text-white"
                           style={{ color: "#ffffff" }}
-                          fill="none" 
-                          stroke="currentColor" 
+                          fill="none"
+                          stroke="currentColor"
                           viewBox="0 0 24 24"
                         >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                         </svg>
                       </button>
                     </div>
-
                   </div>
                 </SwiperSlide>
               );
             })}
           </Swiper>
+        ) : (
+          <div className="text-center py-12 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              Belum ada paket tersedia untuk kategori ini.
+            </p>
+        </div>
         )}
 
         <div className="packages-pagination flex justify-center gap-2 mt-6 [&_.swiper-pagination-bullet-active]:!bg-[#1BC033]" />
@@ -307,7 +447,7 @@ export default function Pricing() {
       {/* Render Booking Modal */}
       {selectedPackage && (
         <BookingModal
-          pkg={selectedPackage}
+          pkg={selectedPackage as any}
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
         />

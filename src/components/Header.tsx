@@ -174,7 +174,7 @@ export default function Header() {
 
               {/* Dropdown Menu */}
               <li className="relative">
-                <button
+                {/* <button
                   type="button"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className={`xl font-medium whitespace-nowrap transition-colors flex items-center justify-between lg:justify-start w-full lg:w-auto gap-1.5 cursor-pointer ${
@@ -198,7 +198,7 @@ export default function Header() {
                       d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"
                     />
                   </svg>
-                </button>
+                </button> */}
 
                 <ul
                   className={`${

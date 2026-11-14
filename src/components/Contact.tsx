@@ -43,7 +43,7 @@ export default function Contact() {
                 <h4 className="wj kk wm cc">Layanan &amp; Call Center</h4>
                 <p>
                   <a
-                    href="https://wa.me/628970237237"
+                    href="https://wa.me/6282127227727"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-[#1BC033] transition-colors font-medium"

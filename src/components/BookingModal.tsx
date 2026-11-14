@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import Image from "next/image";
+import { useState, useEffect, useMemo } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { PackageItem, formatDepartureDate, formatRupiah } from "@/src/data/mockPackages";
+import type { PackageItem } from "@/src/components/Pricing";
+import PaymentProofModal from "@/src/components/PaymentProofModal";
 
 interface BookingModalProps {
   pkg: PackageItem;
@@ -12,8 +12,30 @@ interface BookingModalProps {
   onClose: () => void;
 }
 
+function formatRupiah(amount: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDepartureDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps) {
-  const [step, setStep] = useState<"form" | "payment">("form");
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+
+  const [selectedDepartureId, setSelectedDepartureId] = useState<string>(
+    pkg.departures?.[0]?.id || ""
+  );
+  const [roomType, setRoomType] = useState<"QUAD" | "TRIPLE" | "DOUBLE">("QUAD");
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -25,13 +47,59 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
 
   const [birthDate, setBirthDate] = useState<Date | null>(null);
 
-  const [paymentProof, setPaymentProof] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isCompressing, setIsCompressing] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDepartureId(pkg.departures?.[0]?.id || "");
+      setIsPaymentModalOpen(false);
+    }
+  }, [pkg, isOpen]);
+
+  const activeDeparture =
+    pkg.departures?.find((d) => d.id === selectedDepartureId) || pkg.departures?.[0];
+
+  const availableRoomOptions = useMemo(() => {
+    if (!activeDeparture) return [];
+
+    const options: { value: "QUAD" | "TRIPLE" | "DOUBLE"; label: string; price: number }[] = [];
+
+    if (Number(activeDeparture.priceQuad) > 0) {
+      options.push({
+        value: "QUAD",
+        label: `Quad (4 Org) - ${formatRupiah(Number(activeDeparture.priceQuad))}`,
+        price: Number(activeDeparture.priceQuad),
+      });
+    }
+    if (Number(activeDeparture.priceTriple) > 0) {
+      options.push({
+        value: "TRIPLE",
+        label: `Triple (3 Org) - ${formatRupiah(Number(activeDeparture.priceTriple))}`,
+        price: Number(activeDeparture.priceTriple),
+      });
+    }
+    if (Number(activeDeparture.priceDouble) > 0) {
+      options.push({
+        value: "DOUBLE",
+        label: `Double (2 Org) - ${formatRupiah(Number(activeDeparture.priceDouble))}`,
+        price: Number(activeDeparture.priceDouble),
+      });
+    }
+
+    return options;
+  }, [activeDeparture]);
+
+  useEffect(() => {
+    if (availableRoomOptions.length > 0) {
+      const isCurrentValid = availableRoomOptions.some((opt) => opt.value === roomType);
+      if (!isCurrentValid) {
+        setRoomType(availableRoomOptions[0].value);
+      }
+    }
+  }, [availableRoomOptions, roomType]);
 
   if (!isOpen) return null;
 
-  const nextDeparture = pkg.departures?.[0];
+  const selectedRoomPrice =
+    availableRoomOptions.find((opt) => opt.value === roomType)?.price || 0;
 
   const sanitizeInput = (value: string) => {
     return value
@@ -41,122 +109,96 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: sanitizeInput(value) });
+    setFormData((prev) => ({ ...prev, [name]: sanitizeInput(value) }));
   };
 
-  const handleImageCompression = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsCompressing(true);
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = document.createElement("img");
-      img.src = event.target?.result as string;
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 1000;
-        const MAX_HEIGHT = 1000;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
-                type: "image/jpeg",
-                lastModified: Date.now(),
-              });
-              setPaymentProof(compressedFile);
-              setPreviewUrl(URL.createObjectURL(compressedFile));
-            }
-            setIsCompressing(false);
-          },
-          "image/jpeg",
-          0.7
-        );
-      };
-    };
-  };
-
-  const handleSubmitPayment = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const formattedBirthDate = birthDate ? birthDate.toLocaleDateString("id-ID", { day: '2-digit', month: 'long', year: 'numeric' }) : "-";
-
-    const text = encodeURIComponent(
-      `Assalamu'alaikum PT El Noor Mutsa Maria,\n\n` +
-      `Saya telah mengisi formulir pendaftaran dan melakukan pembayaran *DP Rp 5.000.000*.\n\n` +
-      `*Detail Paket:* ${pkg.title} (${pkg.category})\n` +
-      `${nextDeparture ? `*Keberangkatan:* ${formatDepartureDate(nextDeparture.departureDate)}\n` : ""}` +
-      `-----------------------------------\n` +
-      `*Nama Lengkap:* ${formData.fullName}\n` +
-      `*NIK:* ${formData.nik}\n` +
-      `*Jenis Kelamin:* ${formData.gender === "MALE" ? "Laki-laki" : "Perempuan"}\n` +
-      `*Nama Ayah Kandung:* ${formData.namaAyah}\n` +
-      `*No. HP / WhatsApp:* ${formData.nomerHp}\n` +
-      `*Tanggal Lahir:* ${formattedBirthDate}\n\n` +
-      `${paymentProof ? `*(Bukti transfer DP telah disiapkan untuk dikirim)*` : ""}\n\n` +
-      `Mohon verifikasi pembayaran dan data jamaah saya. Terima kasih.`
-    );
-
-    window.open(`https://wa.me/628970237237?text=${text}`, "_blank");
+  const handleCloseAll = () => {
+    setIsPaymentModalOpen(false);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm overflow-y-auto">
-      <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 my-auto">
-        
-        {/* Modal Header */}
-        <div className="bg-[#1BC033] px-5 py-3.5 flex items-center justify-between text-white">
-          <div>
-            <h3 className="text-base sm:text-lg font-bold">
-              {step === "form" ? "Formulir Pendaftaran Jamaah" : "Konfirmasi Pembayaran DP (Rp 5.000.000)"}
-            </h3>
-            <p className="text-xs text-white/90 truncate max-w-xs sm:max-w-md">{pkg.title}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors cursor-pointer text-white"
-          >
-            ✕
-          </button>
-        </div>
+    <>
+      {/* MODAL 1: FORMULIR BIODATA JAMAAH */}
+      {!isPaymentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 my-auto">
+            {/* Modal Header */}
+            <div className="bg-[#1BC033] px-5 py-3.5 flex items-center justify-between text-white">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold">
+                  Formulir Pendaftaran Jamaah
+                </h3>
+                <p className="text-xs text-white/90 truncate max-w-xs sm:max-w-md">
+                  {pkg.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseAll}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition-colors cursor-pointer text-white"
+              >
+                ✕
+              </button>
+            </div>
 
-        {/* Modal Content Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 max-h-[82vh] overflow-y-auto">
-          
-          {step === "form" ? (
-            <>
-              {/* TAHAP 1: FORMULIR */}
+            {/* Modal Content Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 max-h-[82vh] overflow-y-auto">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  setStep("payment");
+                  setIsPaymentModalOpen(true);
                 }}
                 className="lg:col-span-7 p-5 sm:p-6 space-y-3"
               >
                 <div className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white border-b pb-1.5 mb-2">
                   1. Isi Data Diri Calon Jamaah dengan Benar (Aman &amp; Terverifikasi)
+                </div>
+
+                {/* Pilihan Jadwal & Tipe Kamar */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Jadwal Keberangkatan *
+                    </label>
+                    <select
+                      value={selectedDepartureId}
+                      onChange={(e) => setSelectedDepartureId(e.target.value)}
+                      required
+                      className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
+                    >
+                      {(pkg.departures || []).map((dep) => (
+                        <option key={dep.id} value={dep.id}>
+                          {formatDepartureDate(dep.departureDate)} ({dep.durationDays} Hari) - Sisa {dep.quotaAvailable} Seat
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                      Pilihan Tipe Kamar *
+                    </label>
+                    <select
+                      value={roomType}
+                      onChange={(e) =>
+                        setRoomType(e.target.value as "QUAD" | "TRIPLE" | "DOUBLE")
+                      }
+                      disabled={availableRoomOptions.length === 0}
+                      required
+                      className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033] disabled:opacity-50"
+                    >
+                      {availableRoomOptions.length > 0 ? (
+                        availableRoomOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="">Harga kamar belum tersedia</option>
+                      )}
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -167,9 +209,8 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                     type="text"
                     name="fullName"
                     required
-                    value={formData.fullName}
+                    value={formData.fullName ?? ""}
                     onChange={handleChange}
-                    placeholder="Contoh: Ahmad Budiman"
                     className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
                   />
                 </div>
@@ -183,10 +224,10 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                       type="text"
                       name="nik"
                       required
+                      minLength={16}
                       maxLength={16}
-                      value={formData.nik}
+                      value={formData.nik ?? ""}
                       onChange={handleChange}
-                      placeholder="3204xxxxxxxxxxxx"
                       className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
                     />
                   </div>
@@ -197,7 +238,7 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                     </label>
                     <select
                       name="gender"
-                      value={formData.gender}
+                      value={formData.gender ?? "MALE"}
                       onChange={handleChange}
                       className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
                     >
@@ -216,9 +257,8 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                       type="text"
                       name="namaAyah"
                       required
-                      value={formData.namaAyah}
+                      value={formData.namaAyah ?? ""}
                       onChange={handleChange}
-                      placeholder="Sesuai akta/KK"
                       className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
                     />
                   </div>
@@ -231,9 +271,8 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                       type="tel"
                       name="nomerHp"
                       required
-                      value={formData.nomerHp}
+                      value={formData.nomerHp ?? ""}
                       onChange={handleChange}
-                      placeholder="0812xxxxxxxx"
                       className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
                     />
                   </div>
@@ -247,7 +286,6 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                     selected={birthDate}
                     onChange={(date: Date | null) => setBirthDate(date)}
                     dateFormat="dd/MM/yyyy"
-                    placeholderText="Pilih Tanggal Lahir"
                     className="w-full px-3.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs sm:text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
                     wrapperClassName="w-full"
                     showYearDropdown
@@ -261,21 +299,26 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                 <div className="pt-2 flex items-center gap-3">
                   <button
                     type="button"
-                    onClick={onClose}
+                    onClick={handleCloseAll}
                     className="w-1/3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="w-2/3 py-2.5 rounded-xl bg-[#1BC033] hover:bg-[#16a32b] text-white text-xs sm:text-sm font-semibold shadow-md transition-all cursor-pointer"
+                    disabled={
+                      !activeDeparture ||
+                      activeDeparture.quotaAvailable <= 0 ||
+                      availableRoomOptions.length === 0
+                    }
+                    className="w-2/3 py-2.5 rounded-xl bg-[#1BC033] hover:bg-[#16a32b] text-white text-xs sm:text-sm font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
                   >
                     Lanjutkan Pembayaran DP
                   </button>
                 </div>
               </form>
 
-              {/* Sidebar Kanan (Kini Ditampilkan di Semua Ukuran Layar secara Responsive) */}
+              {/* Sidebar Kanan */}
               <div className="lg:col-span-5 bg-gray-50 dark:bg-gray-800/50 p-5 sm:p-6 border-t lg:border-t-0 lg:border-l border-gray-100 dark:border-gray-800 flex flex-col justify-between space-y-3">
                 <div className="bg-white dark:bg-gray-900 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800 space-y-1.5">
                   <h4 className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
@@ -284,7 +327,7 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                   <h5 className="font-bold text-gray-900 dark:text-white text-xs">
                     {pkg.title}
                   </h5>
-                  
+
                   <div className="space-y-1 text-[11px] text-gray-600 dark:text-gray-300 pt-1 border-t border-gray-100 dark:border-gray-800">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Maskapai:</span>
@@ -292,18 +335,28 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Hotel Makkah:</span>
-                      <span className="font-semibold truncate max-w-[130px]">{pkg.hotelMakkah}</span>
+                      <span className="font-semibold truncate max-w-[130px]">
+                        {pkg.hotelMakkah}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Jadwal:</span>
                       <span className="font-semibold">
-                        {nextDeparture ? formatDepartureDate(nextDeparture.departureDate) : "Segera"}
+                        {activeDeparture
+                          ? formatDepartureDate(activeDeparture.departureDate)
+                          : "Segera"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Tipe Kamar:</span>
+                      <span className="font-semibold">
+                        {availableRoomOptions.length > 0 ? roomType : "-"}
                       </span>
                     </div>
                     <div className="flex justify-between border-t pt-1 mt-0.5">
-                      <span className="text-gray-400 font-medium">Mulai Harga:</span>
+                      <span className="text-gray-400 font-medium">Total Harga Paket:</span>
                       <span className="font-bold text-[#16a32b] dark:text-[#1BC033]">
-                        {nextDeparture ? formatRupiah(nextDeparture.priceQuad) : "-"}
+                        {selectedRoomPrice > 0 ? formatRupiah(selectedRoomPrice) : "-"}
                       </span>
                     </div>
                   </div>
@@ -316,73 +369,34 @@ export default function BookingModal({ pkg, isOpen, onClose }: BookingModalProps
                   </div>
                   <ol className="list-decimal list-inside space-y-0.5 text-gray-600 dark:text-gray-400 pl-0.5 leading-relaxed">
                     <li>Isi formulir dengan benar.</li>
-                    <li>Klik <strong className="text-gray-800 dark:text-gray-200">Lanjutkan</strong> untuk upload bukti DP.</li>
-                    <li>Bayar <strong className="text-emerald-600 font-bold">DP Rp 5.000.000</strong> ke VA Resmi Travel.</li>
-                    <li>Upload foto bukti transfer JPEG, admin meninjau pembayaran.</li>
+                    <li>
+                      Klik <strong className="text-gray-800 dark:text-gray-200">Lanjutkan</strong> untuk upload bukti DP.
+                    </li>
+                    <li>
+                      Bayar <strong className="text-emerald-600 font-bold">DP Rp 5.000.000</strong> ke VA Resmi Travel.
+                    </li>
+                    <li>Upload foto bukti transfer JPEG, admin meninjau &amp; ACC pembayaran.</li>
                   </ol>
                 </div>
               </div>
-            </>
-          ) : (
-            /* TAHAP 2: UPLOAD BUKTI PEMBAYARAN DP & KOMPRESI JPEG */
-            <form onSubmit={handleSubmitPayment} className="lg:col-span-12 p-6 space-y-4">
-              <div className="bg-emerald-50 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200">
-                <strong>Informasi Pembayaran Virtual Account (VA):</strong><br />
-                Silakan lakukan transfer <strong>DP Rp 5.000.000</strong> ke Rekening VA Resmi: <br />
-                <span className="font-mono font-bold text-sm">VA MANDIRI: 8870800123456789</span> a.n. PT El Noor Mutsa Maria.
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                  Upload Bukti Transfer (Otomatis Kompres ke Format JPEG) *
-                </label>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/jpg"
-                  required
-                  onChange={handleImageCompression}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-[#1BC033]"
-                />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  *File gambar akan otomatis dikompres ke format JPEG ukuran ringan agar cepat terkirim.
-                </p>
-              </div>
-
-              {isCompressing && (
-                <p className="text-xs text-amber-600 animate-pulse">Sedang mengompres file gambar ke JPEG...</p>
-              )}
-
-              {previewUrl && !isCompressing && (
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Preview Kompresi JPEG:</p>
-                  <div className="relative w-32 h-32 rounded-xl overflow-hidden border border-gray-200">
-                    <Image src={previewUrl} alt="Bukti Transfer" fill className="object-cover" />
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-3 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setStep("form")}
-                  className="w-1/3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs sm:text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors cursor-pointer"
-                >
-                  Kembali
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCompressing || !paymentProof}
-                  className="w-2/3 py-2.5 rounded-xl bg-[#1BC033] hover:bg-[#16a32b] text-white text-xs sm:text-sm font-semibold shadow-md transition-all cursor-pointer disabled:opacity-50"
-                >
-                  Kirim Bukti &amp; Selesaikan via WhatsApp
-                </button>
-              </div>
-            </form>
-          )}
-
+            </div>
+          </div>
         </div>
+      )}
 
-      </div>
-    </div>
+      {/* MODAL 2: KONFIRMASI & UPLOAD BUKTI PEMBAYARAN DP (TERPISAH) */}
+      {activeDeparture && (
+        <PaymentProofModal
+          isOpen={isPaymentModalOpen}
+          onClose={handleCloseAll}
+          onBack={() => setIsPaymentModalOpen(false)}
+          pkg={pkg}
+          activeDeparture={activeDeparture}
+          roomType={roomType}
+          selectedRoomPrice={selectedRoomPrice}
+          formData={{ ...formData, birthDate }}
+        />
+      )}
+    </>
   );
 }

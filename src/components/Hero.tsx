@@ -6,7 +6,7 @@ export default function Hero() {
   return (
     <section
       id="home"
-      className="relative min-h-screen lg:min-h-[105vh] w-full flex items-center justify-center overflow-hidden pt-32 pb-32"
+      className="relative min-h-screen w-full flex items-center justify-center overflow-hidden pt-28 pb-20"
     >
       {/* Full Background Image */}
       <div
@@ -17,40 +17,45 @@ export default function Hero() {
       />
 
       {/* Dark Gradient Overlay */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/80 via-black/60 to-black/85" />
+      <div className="absolute inset-0 z-0 bg-gradient-to-b from-black/80 via-black/65 to-black/85" />
 
       {/* Konten Utama Tengah */}
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center text-white">
-        {/* Badge Legalitas */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs sm:text-sm font-medium text-gray-200 mb-6">
-          <span className="w-2 h-2 rounded-full bg-[#1BC033] animate-pulse" />
-          <span>PT El Noor Mutsa Maria • PPIU: 9120004492234002</span>
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 text-center text-white flex flex-col items-center">
+        
+        {/* 1. Logo Brand dengan Wadah Kontras yang Lebih Ramping */}
+        <div className="mb-5 bg-white/95 backdrop-blur-md px-6 py-3 sm:px-8 sm:py-3.5 rounded-2xl shadow-2xl border border-white/40">
+          <img
+            src="/images/logo-el.svg"
+            alt="Logo PT El Noor Mutsa Maria"
+            className="w-[180px] sm:w-[220px] md:w-[250px] h-auto object-contain mx-auto"
+          />
         </div>
 
-        {/* Headline Utama */}
-        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-tight mb-4">
-          Kami Mudahkan Langkah Anda Menuju
+        {/* 2. Keterangan Nama PT & Nomor Izin PPIU */}
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs sm:text-sm font-medium text-gray-100 mb-6">
+          <span className="w-2 h-2 rounded-full bg-[#1BC033] animate-pulse shrink-0" />
+          <span>PT El Noor Mutsa Maria • Izin PPIU: 9120004492234002</span>
+        </div>
+
+        {/* 3. Tagline & Headline Utama (Pas 2 Baris & Proporsional) */}
+{/* 3. Tagline & Headline Utama (Menyatu dengan Aksen Garis) */}
+        <h1
+          style={{ fontSize: "clamp(1.75rem, 3.6vw, 3.35rem)" }}
+          className="font-extrabold tracking-tight leading-[1.3] text-white max-w-5xl"
+        >
+          Mudah, Amanah &amp; Sesuai Sunnah.{" "}
+          <span className="relative inline-block text-[#24e03f] drop-shadow-md">
+            Indahnya Berziarah Ke Baitullah
+            {/* Aksen Garis Bawah */}
+            <span className="block h-1.5 sm:h-2 w-full bg-[#24e03f] rounded-full mt-1 sm:mt-1.5 opacity-90" />
+          </span>
         </h1>
 
-        {/* Highlight Box Putih */}
-        <div className="inline-block bg-white text-[#16a32b] px-6 sm:px-10 py-2.5 sm:py-3.5 rounded-2xl shadow-2xl transform -rotate-1 my-2 sm:my-3">
-          <span className="text-2xl sm:text-4xl md:text-5xl font-black tracking-wide">
-            Baitullah Al-Haram
-          </span>
-        </div>
-
-        {/* Deskripsi */}
-        <p className="mt-6 max-w-2xl mx-auto text-sm sm:text-base md:text-lg text-gray-200 leading-relaxed font-normal">
-          Menghadirkan layanan perjalanan ibadah Umrah &amp; Haji Khusus yang
-          amanah, nyaman, dan sesuai sunnah — mulai dari pengurusan dokumen
-          hingga kepulangan Anda ke Tanah Air dengan penuh keberkahan.
-        </p>
-
-        {/* Tombol CTA Utama */}
+        {/* 4. Tombol CTA Utama */}
         <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/#packages"
-            className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-[#1BC033] hover:bg-[#16a32b] !text-white font-bold text-sm sm:text-base shadow-lg shadow-black/40 transition-all duration-300 hover:scale-105"
+            className="inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full bg-[#1BC033] hover:bg-[#16a32b] !text-white font-bold text-sm sm:text-base shadow-lg shadow-black/40 transition-all duration-300 hover:scale-105"
           >
             <span>Pilih Paket Ibadah</span>
             <svg
@@ -70,11 +75,12 @@ export default function Hero() {
 
           <Link
             href="/#support"
-            className="inline-flex items-center gap-2 px-7 py-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 !text-white font-semibold text-sm sm:text-base transition-all"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/25 !text-white font-semibold text-sm sm:text-base transition-all"
           >
             Konsultasi Gratis
           </Link>
         </div>
+
       </div>
     </section>
   );

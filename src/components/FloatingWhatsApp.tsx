@@ -3,7 +3,7 @@
 import React from "react";
 
 export default function FloatingWhatsApp() {
-  const phoneNumber = "628970237237";
+  const phoneNumber = "6282127227727";
   const defaultMessage = encodeURIComponent(
     "Assalamu'alaikum PT El Noor Mutsa Maria, saya ingin konsultasi mengenai paket Umrah & Haji."
   );
