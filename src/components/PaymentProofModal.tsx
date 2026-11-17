@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import { Norek } from "../data/datas";
 import type { PackageItem, DepartureItem } from "@/src/components/Pricing";
 
 export interface BookingFormPayload {
@@ -164,6 +165,7 @@ export default function PaymentProofModal({
       );
       payload.append("paymentProof", paymentProof);
 
+      // Mengirim ke endpoint pendaftaran DP awal (/api/bookings)
       const res = await fetch(`${apiBaseUrl}/bookings`, {
         method: "POST",
         body: payload,
@@ -329,7 +331,7 @@ export default function PaymentProofModal({
               Silakan lakukan transfer <strong>DP Rp 5.000.000</strong> ke Rekening VA Resmi:{" "}
               <br />
               <span className="font-mono font-bold text-sm">
-                VA MANDIRI: 8870800123456789
+                VA MANDIRI: {Norek}
               </span>{" "}
               a.n. PT El Noor Mutsa Maria.
             </div>
@@ -379,6 +381,7 @@ export default function PaymentProofModal({
               </div>
             )}
 
+            {/* Tombol Aksi Form */}
             <div className="pt-3 flex items-center justify-center gap-3">
               <button
                 type="button"

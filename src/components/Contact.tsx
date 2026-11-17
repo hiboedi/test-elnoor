@@ -48,7 +48,7 @@ export default function Contact() {
                     rel="noopener noreferrer"
                     className="hover:text-[#1BC033] transition-colors font-medium"
                   >
-                    0897-0237-237 (Call / WA)
+                    0821-2722-7727 (Call / WA)
                   </a>
                 </p>
               </div>

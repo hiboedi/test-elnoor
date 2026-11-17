@@ -1,0 +1,1 @@
+export const Norek = 1300017919047

@@ -6,8 +6,11 @@ import { ThemeProvider } from "@/src/components/ThemeProvicer";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Base - Next.js Startup Template",
-  description: "Landing page",
+  title: "Elnoor Mutsa Maria",
+  description: "Website Admin Official Elnoor",
+  icons:{
+    icon: "/el-con.svg", // Sesuaikan path jika nama file/foldernya berbeda (misal: /icon.png)
+  }
 };
 
 export default function RootLayout({

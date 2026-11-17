@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/admin/:match*",
+      "destination": "https://elnoor-be.vercel.app/admin/:match*"
+    }
+  ]
+}
